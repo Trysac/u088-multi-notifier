@@ -2,27 +2,24 @@
 
 ## Purpose
 
-`trysac-multi-notifier` is a small, dependency-free Python library: Send one notification to ntfy, Telegram and Standard Webhooks endpoints through a typed interface with bounded retries, secret-safe errors and fakes
+`trysac-multi-notifier` (import name `multi_notifier`) is a small, dependency-free Python library that sends one notification to ntfy, Telegram and Standard Webhooks endpoints, with bounded retries, secret-safe errors and an in-memory fake transport.
 
 ## Shape
 
 ```text
 caller code --> multi_notifier (public API in __init__.py)
                     |
-                    +-- pure functions, no I/O, no global state
+                    +-- notifier.py   Notifier: retries, events, DeliveryReport
+                    +-- channels.py   NtfyChannel, TelegramChannel, WebhookChannel
+                    +-- models.py     Notification, HttpResponse, ChannelResult, DeliveryReport
+                    +-- transport.py  HttpTransport protocol, UrllibTransport (default)
+                    +-- errors.py     NotifierError, ChannelError
+                    +-- testing.py    FakeTransport (deterministic, for tests)
 ```
 
-- **Public API**: the names listed in `__all__` of `src/multi_notifier/__init__.py`. Anything else is
-  internal and may change without a major version.
-- **Errors**: invalid input raises built-in exceptions (`ValueError`, `TypeError`) with a clear
-  message; the library never prints or exits.
-- **Side effects**: none. If a feature needs I/O, isolate it in its own module behind a small
-  interface and record the choice in an ADR.
-
-## Quality contract
-
-`scripts/check.py` is the single definition of the gates; `fabrica.json` tells the factory and CI
-how to run it. See [TESTING.md](TESTING.md).
+- **Public API**: the names listed in `__all__` of `src/multi_notifier/__init__.py`. Anything else is internal.
+- **Errors**: typed `NotifierError` and `ChannelError` carrying a stable `code`; messages never include URLs, tokens or bodies.
+- **Side effects**: the default `UrllibTransport` performs HTTP POST requests; `Notifier` sleeps between retries through an injectable `sleep` callable. Logging uses `logging.getLogger(__name__)` with a `NullHandler`.
 
 ## Decisions
 
